@@ -45,7 +45,7 @@
 #include "hw_param.cl"
 #include "rtl_lib.h"
 
-#pragma OPENCL EXTENSION cl_intel_channels : enable
+#pragma OPENCL EXTENSION cl_altera_channels : enable
 
 // Define the precision of the data-path
 typedef char DPTYPE;
@@ -177,8 +177,11 @@ void memRead(
 	__local channel_vec  weight_buffer[WEIGHT_BUF_SIZE];
 
 	// Initialize the winbuf with the data in the first iteration of the group looping (as gp_num_x_winbuf=0, gp_num_y_winbuf=0)
+	#pragma unroll 2 
 	for(unsigned short win_itm_z=0; win_itm_z<weight_dim3/VEC_SIZE; win_itm_z++){
+		#pragma unroll 3 
 		for(unsigned char  win_itm_y=0; win_itm_y<win_size_y; win_itm_y++){
+			#pragma unroll 3 
 			for(unsigned char  win_itm_x=0; win_itm_x<win_size_x; win_itm_x++){
 
 			feature_idx_dim1 = win_itm_x;
@@ -224,7 +227,7 @@ void memRead(
 	gp_num_x = 0;
 	gp_num_y = 0;
 	out_idx_z = 0;
-
+	#pragma unroll 2
 	Group:for(unsigned int out_idx_xyz=0; out_idx_xyz<(weight_dim4_div_lane*group_num_y*group_num_x); out_idx_xyz++){
 	// The following group loops are flattened as the upper loop to improve pipeline efficiency
 	//for(unsigned short out_idx_z=0; out_idx_z<weight_dim4_div_lane; out_idx_z++){
@@ -328,7 +331,7 @@ void memRead(
 
 								if(output_idx_dim1==0 && output_idx_dim2==0 && output_idx_dim3==0){
 									bias_ch_in = bias[out_idx_z];
-									write_channel_intel(bias_ch, bias_ch_in);
+									write_channel_altera(bias_ch, bias_ch_in);
 									//#ifdef DEBUG_MEMRD
 									//printf("work-item x=%d, y=%d, z=%d, channel =0, write bias=%d\n", output_idx_dim1, output_idx_dim2, output_idx_dim3, bias_ch_in.lane[0]);
 									//#endif
@@ -340,13 +343,13 @@ void memRead(
 								for(unsigned char ll=0; ll<LANE_NUM; ll++){
 									data_ch_vec.lane[ll] = data_vec;
 								}
-								write_channel_intel(data_ch, data_ch_vec);
+								write_channel_altera(data_ch, data_ch_vec);
 
 
 								// weight and bias fetcher
 								weight_ch_vec = weight_buffer[output_idx_dim3*weight_dim2*weight_dim1 + output_idx_dim2*weight_dim1 + output_idx_dim1];
 								//weight_ch_vec = weights[out_idx_z*weight_dim1x2x3/VEC_SIZE + output_idx_dim3*weight_dim1x2 + output_idx_dim2*weight_dim1 + output_idx_dim1];
-								write_channel_intel(weight_ch, weight_ch_vec);
+								write_channel_altera(weight_ch, weight_ch_vec);
 
 								#ifdef DEBUG_MEMRD
 								//if(gp_num_x==group_num_x-1 && gp_num_y==0 && out_idx_z==0){
@@ -452,7 +455,7 @@ void coreConv(
 	// each iteration generates one output
 	for(unsigned int k=0; k<output_num; k++){
 
-		bias_ch_out = read_channel_intel(bias_ch);
+		bias_ch_out = read_channel_altera(bias_ch);
 
 		#pragma unroll
 		for(unsigned char ll=0; ll<LANE_NUM; ll++){
@@ -470,8 +473,8 @@ void coreConv(
 		for(int j=0; j<conv_loop_cnt; j++){
 
 			// load data and weights for each lane
-			mac_data = read_channel_intel(data_ch);
-			mac_weight = read_channel_intel(weight_ch);
+			mac_data = read_channel_altera(data_ch);
+			mac_weight = read_channel_altera(weight_ch);
 
 			// add results from all lanes
 			// accumulate with the last copy
@@ -535,9 +538,9 @@ void coreConv(
 		}
 		//BatchNorm
 		if(contol==0)
-			write_channel_intel(conv_ch, conv_ch_in);
+			write_channel_altera(conv_ch, conv_ch_in);
 		else//for fc layer no bn,Write
-			write_channel_intel(bypass_bn_ch, conv_ch_in);
+			write_channel_altera(bypass_bn_ch, conv_ch_in);
 #else
 
 			// Relu operation
@@ -557,7 +560,7 @@ void coreConv(
 
 		}
 
-		write_channel_intel(conv_ch, conv_ch_in);
+		write_channel_altera(conv_ch, conv_ch_in);
 #endif
 	}// end of output loop
 	//printf("Kernel coreConv lanched !!!\n");
@@ -595,7 +598,7 @@ void batchNorm(
 	DPTYPE out_final;
 	float out_conver;
 	for(unsigned int k=0; k<input_num; k++,j++){
-		conv_ch_out = read_channel_intel(conv_ch);
+		conv_ch_out = read_channel_altera(conv_ch);
 		if(j==dim1xdim2)
 		{
 			mean_ch = mean[iter];
@@ -645,7 +648,7 @@ void batchNorm(
 #endif
 		}
 		
-	write_channel_intel(batchNorm_ch, bn_ch_in);
+	write_channel_altera(batchNorm_ch, bn_ch_in);
 	//printf("Write channel item-%d is written in channel %d...\n", k, ll);
 	}
 	//printf("Kernel batchNorm lanched !!!\n");
@@ -717,7 +720,7 @@ void maxPool(
 	pool_group_cnt = 0;
 	//#pragma ivdep array(pool_final)
 	for(ushort i = 0; i < pool_times; i++){
-		pool_sync = read_channel_intel(pool_sync_ch);
+		pool_sync = read_channel_altera(pool_sync_ch);
 		mem_fence(CLK_CHANNEL_MEM_FENCE);
 
 		// init counters
@@ -909,14 +912,14 @@ void memWrite(
     		}
       }
       else{
-        output = read_channel_intel(batchNorm_ch);
+        output = read_channel_altera(batchNorm_ch);
       }
     }
     else // bypass == 1 bypass_bn_ch
-      output = read_channel_intel(bypass_bn_ch);
+      output = read_channel_altera(bypass_bn_ch);
 
 #else
-		output = read_channel_intel(conv_ch);
+		output = read_channel_altera(conv_ch);
 #endif
 
 		// store the vectorized output into local buffer
@@ -966,7 +969,7 @@ void memWrite(
 
 	if(pool_on == 1){
 		if((global_x==out_dim1-1)&&(global_y > 0)&&((global_y-pool_size+1)%2 == 0)&&(local_z ==LANE_NUM-1)){
-			write_channel_intel(pool_sync_ch, pool_on_signal);
+			write_channel_altera(pool_sync_ch, pool_on_signal);
 		}
 	}
 
@@ -1091,7 +1094,7 @@ void eltwise(
 #endif
 
 __kernel
-__attribute__((max_work_group_size(1,1,LRN_MAX_LOCAL_SIZE))) // (x,y,z)
+__attribute__((max_work_group_size(LRN_MAX_LOCAL_SIZE))) // (x,y,z)
 void lrn(
 			// Params Ports
 			uchar data_dim1,
@@ -1133,7 +1136,7 @@ void lrn(
 	short        lrn_cnvt, lrn_cnvt2;
 
 	// Load the all data in one line along dim3 into local line buffer
-	#pragma unroll
+	#pragma unroll 
 	for(unsigned char ll=0; ll<VEC_SIZE; ll++){
 		z_buffer[global_z*VEC_SIZE+ll+LRN_WIN_SIZE/2] = bottom[global_z*data_dim2*data_dim1 + global_y*data_dim1+ global_x].data[ll];
 	}
@@ -1213,7 +1216,7 @@ void lrn(
 	}
 
 	// Store the results back to global mem
-	#pragma unroll
+	#pragma unroll 
 	for(unsigned char vv=0; vv<VEC_SIZE; vv++){
 		data_out_partial.data[vv]=lrn_buffer[global_z*VEC_SIZE+vv];
 	}

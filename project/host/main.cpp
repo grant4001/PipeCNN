@@ -45,19 +45,19 @@ typedef  float FTYPE;
 
 //----------- Design Parameters --------------//
 // select what platform is used
-#ifdef XILINX
-const char *vendor_name = "Xilinx";
-#else
+//#ifdef XILINX
+//const char *vendor_name = "Xilinx";
+//#else
 //----------- SDK version <= 19.1 -----------//
 //const char *vendor_name = "Intel";
 //----------- SDK version >= 19.3 ----------//
-#if defined(SW_EMU)
-const char *vendor_name = "Intel(R) FPGA Emulation Platform for OpenCL(TM)";
-#else
-const char *vendor_name = "Intel(R) FPGA SDK for OpenCL(TM)";
-#endif
-#endif
-#define DEVICE_TYPE CL_DEVICE_TYPE_ACCELERATOR
+//#if defined(SW_EMU)
+//const char *vendor_name = "Intel(R) FPGA Emulation Platform for OpenCL(TM)";
+//#else
+const char *vendor_name = "Altera";
+//#endif
+//#endif
+#define DEVICE_TYPE CL_DEVICE_TYPE_ALL
 
 // SW System parameters
 #define DMA_ALIGNMENT   64
@@ -381,14 +381,14 @@ int main(int argc, char** argv)
 	}
 
     // Query the available OpenCL device
-    device.reset(getDevices(platform_id, DEVICE_TYPE, &num_devices));
+    device.reset(getDevices(platform_id, CL_DEVICE_TYPE_ALL, &num_devices));
     printf("\nPlatform: %s\n", getPlatformName(platform_id).c_str());
     printf("Totally %d device(s) are found\n", num_devices);
-#if defined(SW_EMU)
+//#if defined(SW_EMU)
     device_ptr = 0; // only use one device, select the proper idx
-#else
-    device_ptr = 1; // only use one device, select the proper idx
-#endif
+//#else
+//    device_ptr = 1; // only use one device, select the proper idx
+//#endif
     num_devices = 1; // reset the num of device to 1
     //for(unsigned device_ptr = 0; device_ptr < num_devices; ++device_ptr) {
         printf("  Using Device %d: %s\n", device_ptr, getDeviceName(device[device_ptr]).c_str());

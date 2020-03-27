@@ -135,7 +135,7 @@ OCCFLAGS = -v -report -profile -I device/RTL -L device/RTL -l rtl_lib.aoclib -bo
 else ifeq ($(FLOW),report)
 OCCFLAGS = -v -c -report -I device/RTL -L device/RTL -l rtl_lib.aoclib -board-package=$(BSP_DIR)
 else ifeq ($(FLOW),rtl)
-OCCFLAGS = -v -rtl -report -fmax=300  -I device/RTL -L device/RTL -l rtl_lib.aoclib -board-package=$(BSP_DIR)
+OCCFLAGS = -g -v -I device/RTL -L device/RTL -l rtl_lib.aoclib --board p385a_sch_ax115 --report
 else ifeq ($(FLOW),hw_sim)
 OCCFLAGS = -v -report -march=simulator -ghdl -I device/RTL -L device/RTL -l rtl_lib.aoclib -board-package=$(BSP_DIR)
 endif
